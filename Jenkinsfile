@@ -1,5 +1,10 @@
+
 pipeline {
     agent any
+     environment {
+        // Force Jenkins to use your Mac's Node.js installation
+        PATH = "/usr/local/bin:${env.PATH}"
+    }
     tools {
         nodejs 'System_Node'  // Matches the name configured in Jenkins Global Tools
     }
