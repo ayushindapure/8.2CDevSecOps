@@ -1,14 +1,3 @@
-.DS_Store
-node_modules
-*.sock
-
-.sass-cache
-sass
-config.rb
-npm-debug.log
-
-.dccache
-.dcignore
-.idea/
-.dccache
-
+node_modules/
+coverage/
+.env
