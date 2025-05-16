@@ -1,9 +1,12 @@
 pipeline {
     agent any
     
-    // Force Jenkins to use your Mac's Node.js installation
     environment {
+        // Force Jenkins to use your Mac's Node.js installation
         PATH = "/usr/local/bin:${env.PATH}"
+        // Alternative method if PATH doesn't work
+        NODE = '/usr/local/bin/node'
+        NPM = '/usr/local/bin/npm'
     }
     
     stages {
@@ -14,33 +17,42 @@ pipeline {
             }
         }
         
+        stage('Verify Environment') {
+            steps {
+                sh '''
+                    echo "PATH: $PATH"
+                    which node || echo "Node not found in PATH"
+                    which npm || echo "NPM not found in PATH"
+                    ls -la /usr/local/bin/node || echo "Node not found at /usr/local/bin"
+                    ${NODE} --version
+                '''
+            }
+        }
+        
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
-                // Verify installation
-                sh 'npm list --depth=0'
+                sh '${NPM} install'
+                sh '${NPM} list --depth=0'
             }
         }
         
         stage('Run Tests') {
             steps {
-                sh 'npm test || true'  // Continue even if tests fail
+                sh '${NPM} test || true'
             }
         }
         
         stage('Generate Coverage') {
             steps {
-                sh 'npm run coverage || true'
-                // Archive the coverage report
+                sh '${NPM} run coverage || true'
                 archiveArtifacts artifacts: 'coverage/**/*'
             }
         }
         
         stage('Security Scan') {
             steps {
-                sh 'npm audit || true'
-                // Optional: Save audit report
-                sh 'npm audit --json > audit-report.json'
+                sh '${NPM} audit || true'
+                sh '${NPM} audit --json > audit-report.json'
                 archiveArtifacts artifacts: 'audit-report.json'
             }
         }
@@ -48,21 +60,13 @@ pipeline {
     
     post {
         always {
-            // Clean up workspace
             cleanWs()
-            // Send basic build notification
             emailext (
                 subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME}",
                 body: "View results at: ${env.BUILD_URL}",
                 to: 'your-email@example.com',
                 attachLog: true
             )
-        }
-        success {
-            // Optional success notification
-            slackSend channel: '#builds',
-                color: 'good',
-                message: "Build Successful: ${env.JOB_NAME} - ${env.BUILD_URL}"
         }
     }
 }
