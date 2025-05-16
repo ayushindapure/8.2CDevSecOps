@@ -1,18 +1,15 @@
-
 pipeline {
     agent any
-     environment {
-        // Force Jenkins to use your Mac's Node.js installation
+    
+    // Force Jenkins to use your Mac's Node.js installation
+    environment {
         PATH = "/usr/local/bin:${env.PATH}"
-    }
-    tools {
-        nodejs 'System_Node'  // Matches the name configured in Jenkins Global Tools
     }
     
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', 
+                git branch: 'main',
                 url: 'https://github.com/ayushindapure/8.2CDevSecOps.git'
             }
         }
@@ -20,6 +17,8 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+                // Verify installation
+                sh 'npm list --depth=0'
             }
         }
         
@@ -29,23 +28,41 @@ pipeline {
             }
         }
         
-        stage('Generate Coverage Report') {
+        stage('Generate Coverage') {
             steps {
-                sh 'npm run coverage || true'  // Continue even if coverage fails
+                sh 'npm run coverage || true'
+                // Archive the coverage report
+                archiveArtifacts artifacts: 'coverage/**/*'
             }
         }
         
         stage('Security Scan') {
             steps {
-                sh 'npm audit || true'  // Continue even if vulnerabilities found
+                sh 'npm audit || true'
+                // Optional: Save audit report
+                sh 'npm audit --json > audit-report.json'
+                archiveArtifacts artifacts: 'audit-report.json'
             }
         }
     }
     
     post {
-        always {    
-            archiveArtifacts artifacts: 'coverage/**/*'  // Save coverage reports
-            cleanWs()  // Clean workspace after build
+        always {
+            // Clean up workspace
+            cleanWs()
+            // Send basic build notification
+            emailext (
+                subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME}",
+                body: "View results at: ${env.BUILD_URL}",
+                to: 'your-email@example.com',
+                attachLog: true
+            )
+        }
+        success {
+            // Optional success notification
+            slackSend channel: '#builds',
+                color: 'good',
+                message: "Build Successful: ${env.JOB_NAME} - ${env.BUILD_URL}"
         }
     }
 }
